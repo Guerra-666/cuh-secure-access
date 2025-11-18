@@ -6,8 +6,9 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:6667
 export class ApiService {
   /**
    * Search for a student by name or matricula
+   * Returns an array of matching students (can be empty if no results)
    */
-  static async searchStudent(query: string, searchType: 'name' | 'id'): Promise<Student | null> {
+  static async searchStudent(query: string, searchType: 'name' | 'id'): Promise<Student[]> {
     try {
       const params = new URLSearchParams();
       // Add required 'tipo' parameter for students
@@ -28,21 +29,20 @@ export class ApiService {
       });
       
       if (!response.ok) {
-        if (response.status === 404) return null;
+        if (response.status === 404) return [];
         throw new Error('Error al buscar estudiante');
       }
 
       const usuarios = await response.json();
       
-      if (usuarios.length === 0) return null;
+      if (usuarios.length === 0) return [];
       
-      const rawUser = usuarios[0];
+      // Debug: Log the raw API response
+      console.log('Search Student - Raw API Response:', usuarios);
       
-      // Debug: Log the raw user data returned by the API
-      console.log('Search Student - Raw API Response:', rawUser);
-      
-      // Map API response to expected Student interface
-      const user: Student = {
+      // Map all results to Student interface
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mappedStudents: Student[] = usuarios.map((rawUser: any) => ({
         nombre_completo: rawUser.nombre_completo?.trim() || '',
         matricula: rawUser.matricula?.trim() || '',
         grado_academico: rawUser.grado_academico?.trim() || '',
@@ -51,12 +51,12 @@ export class ApiService {
         nombre: rawUser.nombre_completo?.trim() || '',
         cuenta: rawUser.matricula?.trim() || '',
         telefono: '' // Not provided by the new API response
-      };
+      }));
       
-      // Debug: Log the mapped user data
-      console.log('Search Student - Mapped User:', user);
+      // Debug: Log the mapped users
+      console.log('Search Student - Mapped Students:', mappedStudents);
       
-      return user;
+      return mappedStudents;
     } catch (error) {
       console.error('Error searching student:', error);
       throw error;
@@ -65,21 +65,26 @@ export class ApiService {
 
   /**
    * Search for a teacher by name or clave_docente
+   * Returns an array of matching teachers (can be empty if no results)
    */
-  static async searchTeacher(query: string | TeacherNameData, searchType: 'name' | 'id'): Promise<Teacher | null> {
+  static async searchTeacher(query: string | TeacherNameData, searchType: 'name' | 'id'): Promise<Teacher[]> {
     try {
       const params = new URLSearchParams();
       if (searchType === 'id') {
-        params.append('clave_docente', query as string);
+        params.append('clave_docente', (query as string).trim());
       } else {
-        // Handle separate name fields for teachers
+        // Handle separate name fields for teachers. Only append non-empty values
         if (typeof query === 'object') {
-          params.append('nombre', query.nombre);
-          params.append('paterno', query.apellidoPaterno);
-          params.append('materno', query.apellidoMaterno);
+          const nombre = query.nombre?.trim();
+          const paterno = query.apellidoPaterno?.trim();
+          const materno = query.apellidoMaterno?.trim();
+          if (nombre) params.append('nombre', nombre);
+          if (paterno) params.append('paterno', paterno);
+          if (materno) params.append('materno', materno);
         } else {
-          // Fallback for old format (shouldn't be used for teachers anymore)
-          params.append('nombre', query);
+          // Fallback for old format
+          const q = (query as string).trim();
+          if (q) params.append('nombre', q);
         }
       }
 
@@ -90,33 +95,32 @@ export class ApiService {
       });
       
       if (!response.ok) {
-        if (response.status === 404) return null;
+        if (response.status === 404) return [];
         throw new Error('Error al buscar docente');
       }
 
       const docentes = await response.json();
       
-      if (docentes.length === 0) return null;
-      
-      const rawTeacher = docentes[0];
+      if (docentes.length === 0) return [];
       
       // Debug: Log the raw teacher data returned by the API
-      console.log('Search Teacher - Raw API Response:', rawTeacher);
+      console.log('Search Teacher - Raw API Response:', docentes);
       
-      // Map API response to expected Teacher interface
-      const teacher: Teacher = {
+      // Map all results to Teacher interface
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mappedTeachers: Teacher[] = docentes.map((rawTeacher: any) => ({
         clave_docente: rawTeacher.clave_docente?.trim() || rawTeacher.cuenta?.trim() || '',
         nombre: rawTeacher.nombre?.trim() || '',
         paterno: rawTeacher.paterno?.trim() || rawTeacher.apellido_paterno?.trim() || '',
         materno: rawTeacher.materno?.trim() || rawTeacher.apellido_materno?.trim() || '',
         telefono_celular: rawTeacher.telefono_celular?.trim() || rawTeacher.telefono?.trim() || '',
         gradoimparte: rawTeacher.gradoimparte?.trim() || rawTeacher.grado_imparte?.trim() || ''
-      };
+      }));
       
-      // Debug: Log the mapped teacher data
-      console.log('Search Teacher - Mapped Teacher:', teacher);
+      // Debug: Log the mapped teachers
+      console.log('Search Teacher - Mapped Teachers:', mappedTeachers);
       
-      return teacher;
+      return mappedTeachers;
     } catch (error) {
       console.error('Error searching teacher:', error);
       throw error;
@@ -125,8 +129,9 @@ export class ApiService {
 
   /**
    * Search for administrative staff by name or matricula
+   * Returns an array of matching administrative users (can be empty if no results)
    */
-  static async searchAdministrative(query: string, searchType: 'name' | 'id'): Promise<Administrative | null> {
+  static async searchAdministrative(query: string, searchType: 'name' | 'id'): Promise<Administrative[]> {
     try {
       const params = new URLSearchParams();
       // Add required 'tipo' parameter for administrative staff
@@ -147,21 +152,20 @@ export class ApiService {
       });
       
       if (!response.ok) {
-        if (response.status === 404) return null;
+        if (response.status === 404) return [];
         throw new Error('Error al buscar administrativo');
       }
 
       const usuarios = await response.json();
       
-      if (usuarios.length === 0) return null;
-      
-      const rawUser = usuarios[0];
+      if (usuarios.length === 0) return [];
       
       // Debug: Log the raw user data returned by the API
-      console.log('Search Administrative - Raw API Response:', rawUser);
+      console.log('Search Administrative - Raw API Response:', usuarios);
       
-      // Map API response to expected Administrative interface
-      const user: Administrative = {
+      // Map all results to Administrative interface
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mappedAdmins: Administrative[] = usuarios.map((rawUser: any) => ({
         nombre_completo: rawUser.nombre_completo?.trim() || '',
         matricula: rawUser.matricula?.trim() || '',
         grado_academico: rawUser.grado_academico?.trim() || '',
@@ -170,12 +174,12 @@ export class ApiService {
         nombre: rawUser.nombre_completo?.trim() || '',
         cuenta: rawUser.matricula?.trim() || '',
         telefono: '' // Not provided by the new API response
-      };
+      }));
       
-      // Debug: Log the mapped user data
-      console.log('Search Administrative - Mapped User:', user);
+      // Debug: Log the mapped users
+      console.log('Search Administrative - Mapped Users:', mappedAdmins);
       
-      return user;
+      return mappedAdmins;
     } catch (error) {
       console.error('Error searching administrative:', error);
       throw error;

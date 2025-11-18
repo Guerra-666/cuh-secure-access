@@ -5,18 +5,20 @@ import cuhLogo from '@/assets/cuh-logo.png';
 import ProfileSelector from '@/components/ProfileSelector';
 import SearchForm, { TeacherNameData } from '@/components/SearchForm';
 import UserDetails from '@/components/UserDetails';
+import UserSelectionDialog from '@/components/UserSelectionDialog';
 import SuccessMessage from '@/components/SuccessMessage';
 import { ProfileType, UserData } from '@/types/user.types';
 import { ApiService } from '@/services/api.service';
 import { Button } from '@/components/ui/button';
 import { Users } from 'lucide-react';
 
-type ViewState = 'profile-selection' | 'search' | 'user-details' | 'success';
+type ViewState = 'profile-selection' | 'search' | 'user-selection' | 'user-details' | 'success';
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<ViewState>('profile-selection');
   const [selectedProfile, setSelectedProfile] = useState<ProfileType | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [searchResults, setSearchResults] = useState<UserData[]>([]);
   const [resetPhoneNumber, setResetPhoneNumber] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -30,23 +32,29 @@ const Index = () => {
     setIsLoading(true);
     
     try {
-      let result: UserData | null = null;
+      let results: UserData[] = [];
 
       // Call appropriate API based on profile type
       if (selectedProfile === 'student') {
-        result = await ApiService.searchStudent(query as string, searchType);
+        results = await ApiService.searchStudent(query as string, searchType);
       } else if (selectedProfile === 'teacher') {
-        result = await ApiService.searchTeacher(query, searchType);
+        results = await ApiService.searchTeacher(query, searchType);
       } else if (selectedProfile === 'administrative') {
-        result = await ApiService.searchAdministrative(query as string, searchType);
+        results = await ApiService.searchAdministrative(query as string, searchType);
       }
 
-      if (result) {
-        setUserData(result);
+      if (results.length === 0) {
+        toast.error('No se encontró ningún usuario con esos datos');
+      } else if (results.length === 1) {
+        // Solo un resultado: ir directo a detalles
+        setUserData(results[0]);
         setCurrentView('user-details');
         toast.success('Usuario encontrado');
       } else {
-        toast.error('No se encontró ningún usuario con esos datos');
+        // Múltiples resultados: mostrar diálogo de selección
+        setSearchResults(results);
+        setCurrentView('user-selection');
+        toast.info(`Se encontraron ${results.length} usuarios`);
       }
     } catch (error) {
       toast.error('Error al buscar usuario. Por favor, intente nuevamente.');
@@ -93,17 +101,32 @@ const Index = () => {
     setCurrentView('profile-selection');
     setSelectedProfile(null);
     setUserData(null);
+    setSearchResults([]);
   };
 
   const handleBackToSearch = () => {
     setCurrentView('search');
     setUserData(null);
+    setSearchResults([]);
+  };
+
+  const handleUserSelect = (user: UserData) => {
+    setUserData(user);
+    setSearchResults([]);
+    setCurrentView('user-details');
+    toast.success('Usuario seleccionado');
+  };
+
+  const handleCloseSelection = () => {
+    setCurrentView('search');
+    setSearchResults([]);
   };
 
   const handleReset = () => {
     setCurrentView('profile-selection');
     setSelectedProfile(null);
     setUserData(null);
+    setSearchResults([]);
     setResetPhoneNumber('');
   };
 
@@ -111,6 +134,7 @@ const Index = () => {
     setCurrentView('profile-selection');
     setSelectedProfile(null);
     setUserData(null);
+    setSearchResults([]);
     setResetPhoneNumber('');
   };
 
@@ -155,6 +179,16 @@ const Index = () => {
             onSearch={handleSearch}
             onBack={handleBackToProfileSelection}
             isLoading={isLoading}
+          />
+        )}
+
+        {currentView === 'user-selection' && selectedProfile && (
+          <UserSelectionDialog
+            open={true}
+            onClose={handleCloseSelection}
+            onSelect={handleUserSelect}
+            users={searchResults}
+            profileType={selectedProfile}
           />
         )}
 

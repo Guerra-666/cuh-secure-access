@@ -49,9 +49,16 @@ const SearchForm = ({ profileType, onSearch, onBack, isLoading }: SearchFormProp
     e.preventDefault();
     
     if (profileType === 'teacher' && searchType === 'name') {
-      // For teachers searching by name, validate all name fields are filled
-      if (teacherName.nombre.trim() && teacherName.apellidoPaterno.trim() && teacherName.apellidoMaterno.trim()) {
-        onSearch(teacherName, searchType);
+      // For teachers: allow partial searches.
+      // Minimum requirement: Nombre(s). Apellidos (paterno/materno) son opcionales
+      if (teacherName.nombre.trim()) {
+        // Trim values to avoid sending empty whitespace
+        const payload = {
+          nombre: teacherName.nombre.trim(),
+          apellidoPaterno: teacherName.apellidoPaterno.trim(),
+          apellidoMaterno: teacherName.apellidoMaterno.trim()
+        };
+        onSearch(payload, searchType);
       }
     } else {
       // For other cases (teacher by ID, student, administrative)
@@ -125,7 +132,7 @@ const SearchForm = ({ profileType, onSearch, onBack, isLoading }: SearchFormProp
                 </div>
                 <div>
                   <Label htmlFor="teacher-paterno" className="text-sm">
-                    Apellido Paterno
+                    Apellido Paterno <span className="text-xs text-muted-foreground">(opcional)</span>
                   </Label>
                   <Input
                     id="teacher-paterno"
@@ -139,7 +146,7 @@ const SearchForm = ({ profileType, onSearch, onBack, isLoading }: SearchFormProp
                 </div>
                 <div>
                   <Label htmlFor="teacher-materno" className="text-sm">
-                    Apellido Materno
+                    Apellido Materno <span className="text-xs text-muted-foreground">(opcional)</span>
                   </Label>
                   <Input
                     id="teacher-materno"
@@ -152,6 +159,9 @@ const SearchForm = ({ profileType, onSearch, onBack, isLoading }: SearchFormProp
                   />
                 </div>
               </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Puedes buscar solo por nombre o incluir apellido paterno/materno para refinar la búsqueda.
+              </p>
             </div>
           ) : (
             // Regular input for other cases
@@ -184,8 +194,8 @@ const SearchForm = ({ profileType, onSearch, onBack, isLoading }: SearchFormProp
             className="w-full text-lg py-6"
             disabled={
               isLoading || 
-              (profileType === 'teacher' && searchType === 'name' 
-                ? !teacherName.nombre.trim() || !teacherName.apellidoPaterno.trim() || !teacherName.apellidoMaterno.trim()
+              (profileType === 'teacher' && searchType === 'name'
+                ? !teacherName.nombre.trim()
                 : !query.trim())
             }
           >
